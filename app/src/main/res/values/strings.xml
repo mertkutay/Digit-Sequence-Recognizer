@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">Digit Sequence Recognizer</string>
+    <string name="camera_and_storage_rationale">Digit Sequence Recognizer need your permission for using camera</string>
+</resources>
