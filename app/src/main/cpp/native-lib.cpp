@@ -15,8 +15,8 @@ JNIEXPORT void JNICALL Java_com_mfb473_digitsequencerecognizer_MainActivity_addG
     Mat& mRgba = *(Mat*)addrRgba;
     int h = mRgba.rows;
     int w = mRgba.cols;
-    int y1 = h / 2 - h / 6;
-    int y2 = h / 2 + h / 6;
+    int y1 = h / 2 - h / 10;
+    int y2 = h / 2 + h / 10;
     line(mRgba, Point(0, y1), Point(w, y1), Scalar(255, 0, 0));
     line(mRgba, Point(0, y2), Point(w, y2), Scalar(255, 0, 0));
 }
@@ -28,11 +28,12 @@ JNIEXPORT void JNICALL Java_com_mfb473_digitsequencerecognizer_MainActivity_proc
     Mat& mRgba = *(Mat*)addrRgba;
     int h = mGray.rows;
     int w = mGray.cols;
-    int y1 = h / 2 - h / 6;
-    int roi_edge = h / 3;
+    int y1 = h / 2 - h / 10;
+    int roi_edge = h / 5;
 
     Mat mInter(roi_edge, w, CV_8UC1, Scalar(0));
-    adaptiveThreshold(mGray(Rect(0, y1, w, roi_edge)), mInter, 255, ADAPTIVE_THRESH_MEAN_C, THRESH_BINARY_INV, 61, 15);
+//    GaussianBlur(mGray(Rect(0, y1, w, roi_edge)), mInter, Size(3, 3), 0, 0);
+    adaptiveThreshold(mGray(Rect(0, y1, w, roi_edge)), mInter, 255, ADAPTIVE_THRESH_GAUSSIAN_C, THRESH_BINARY_INV, 61, 15);
 
     vector<vector<Point> > contours;
     vector<Vec4i> hierarchy;
@@ -52,21 +53,27 @@ JNIEXPORT void JNICALL Java_com_mfb473_digitsequencerecognizer_MainActivity_proc
         }
     }
 
-    int sum = 0;
+    int max_area = 0;
     vector<int> areas(num_contours);
     for (int i = 0; i < num_contours; i++) {
         areas[i] = boundRect[i].height * boundRect[i].width;
-        sum += areas[i];
+        if(areas[i] > max_area){
+            max_area = areas[i];
+        }
     }
-    float mean = sum / num_contours;
 
     vector<int> digit_idx(num_contours);
     int num_digits = 0;
     for (int i = 0; i < num_contours; i++) {
-        if (areas[i] >= mean / 8) {
+        if (areas[i] >= max_area / 40) {
             digit_idx[num_digits] = i;
             num_digits += 1;
         }
+    }
+
+    if(num_digits == 0){
+        mOut -> create(28, 28, CV_8UC1);
+        return;
     }
 
     mOut -> create(28, num_digits * 28, CV_8UC1);

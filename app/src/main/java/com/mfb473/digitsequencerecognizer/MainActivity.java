@@ -2,21 +2,26 @@ package com.mfb473.digitsequencerecognizer;
 
 import android.Manifest;
 import android.app.Activity;
+import android.content.Context;
 import android.graphics.Bitmap;
+import android.hardware.Camera;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
+import android.util.AttributeSet;
 import android.util.Log;
 import android.view.SurfaceView;
 import android.view.View;
 import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import org.opencv.android.BaseLoaderCallback;
 import org.opencv.android.CameraBridgeViewBase;
 import org.opencv.android.CameraBridgeViewBase.CvCameraViewFrame;
 import org.opencv.android.CameraBridgeViewBase.CvCameraViewListener2;
+import org.opencv.android.JavaCameraView;
 import org.opencv.android.LoaderCallbackInterface;
 import org.opencv.android.OpenCVLoader;
 import org.opencv.android.Utils;
@@ -41,7 +46,7 @@ public class MainActivity extends Activity implements
     private Mat mGray;
     private Mat mOut;
 
-    private CameraBridgeViewBase mOpenCvCameraView;
+    private JavaCamResView mOpenCvCameraView;
     private Button mButton;
     private TextView mTextView;
 
@@ -65,37 +70,6 @@ public class MainActivity extends Activity implements
             }
         }
     };
-
-    public void onDetectClick(){
-        processImage(mGray.getNativeObjAddr(), mOut.getNativeObjAddr(), mRgba.getNativeObjAddr());
-        Bitmap bitmap;
-        Mat tmp = new Mat(mOut.rows(), mOut.cols(), CvType.CV_8UC4);
-        Imgproc.cvtColor(mOut, tmp, Imgproc.COLOR_GRAY2RGBA);
-        bitmap = Bitmap.createBitmap(tmp.cols(), tmp.rows(), Bitmap.Config.ARGB_8888);
-        Utils.matToBitmap(tmp, bitmap);
-        float[] pixels = new float[(int) mOut.total()];
-        mOut.convertTo(mOut, CvType.CV_32F);
-        mOut.get(0,0, pixels);
-        for(int i=0; i<pixels.length; i++){
-            pixels[i] /= 255;
-        }
-        int num_digits = pixels.length / 784;
-        float[][] digits = new float[num_digits][784];
-        for(int i=0; i<num_digits; i++){
-            for(int j=0; j<784; j++) {
-                int y = j / 28;
-                int x = j % 28;
-                digits[i][j] = pixels[y * num_digits * 28 + i * 28 + x];
-            }
-        }
-        List<List<Classifier.Recognition>> results = new ArrayList<>();
-        String string_digits = "Result: ";
-        for(int i=0; i<num_digits; i++){
-            results.add(classifier.recognizeImage(digits[i]));
-            string_digits += results.get(i).get(0).getTitle();
-        }
-        mTextView.setText(string_digits);
-    }
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -142,6 +116,39 @@ public class MainActivity extends Activity implements
         }
     }
 
+    public void onDetectClick(){
+        processImage(mGray.getNativeObjAddr(), mOut.getNativeObjAddr(), mRgba.getNativeObjAddr());
+        Bitmap bitmap;
+        Mat tmp = new Mat(mOut.rows(), mOut.cols(), CvType.CV_8UC4);
+        Imgproc.cvtColor(mOut, tmp, Imgproc.COLOR_GRAY2RGBA);
+        bitmap = Bitmap.createBitmap(tmp.cols(), tmp.rows(), Bitmap.Config.ARGB_8888);
+        Utils.matToBitmap(tmp, bitmap);
+        float[] pixels = new float[(int) mOut.total()];
+        mOut.convertTo(mOut, CvType.CV_32F);
+        mOut.get(0,0, pixels);
+        for(int i=0; i<pixels.length; i++){
+            pixels[i] /= 255;
+        }
+        int num_digits = pixels.length / 784;
+        float[][] digits = new float[num_digits][784];
+        for(int i=0; i<num_digits; i++){
+            for(int j=0; j<784; j++) {
+                int y = j / 28;
+                int x = j % 28;
+                digits[i][j] = pixels[y * num_digits * 28 + i * 28 + x];
+            }
+        }
+        List<List<Classifier.Recognition>> results = new ArrayList<>();
+        String string_digits = "";
+        for(int i=0; i<num_digits; i++){
+            results.add(classifier.recognizeImage(digits[i]));
+            if(results.get(i).size() > 0) {
+                string_digits += results.get(i).get(0).getTitle();
+            }
+        }
+        mTextView.setText(string_digits);
+    }
+
     @AfterPermissionGranted(RC_CAMERA_AND_STORAGE)
     public void enablePreview(){
         Log.i(TAG, "OpenCV loaded successfully");
@@ -183,6 +190,7 @@ public class MainActivity extends Activity implements
         mRgba = new Mat(height, width, CvType.CV_8UC4);
         mGray = new Mat(height, width, CvType.CV_8UC1);
         mOut = new Mat();
+        mOpenCvCameraView.setFocusMode();
     }
 
     public void onCameraViewStopped() {
@@ -194,7 +202,7 @@ public class MainActivity extends Activity implements
     public Mat onCameraFrame(CvCameraViewFrame inputFrame) {
         mRgba = inputFrame.rgba();
         mGray = inputFrame.gray();
-        addGuideLines(mRgba.getNativeObjAddr());
+//        addGuideLines(mRgba.getNativeObjAddr());
         return mRgba;
     }
 
@@ -218,4 +226,6 @@ public class MainActivity extends Activity implements
 
     public native void addGuideLines(long matAddrRgba);
     public native void processImage(long matAddrGr, long matAddrOut, long matAddrRgba);
+
+
 }
